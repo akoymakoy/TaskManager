@@ -15,6 +15,8 @@ import java.time.LocalDate;
 @Builder
 public class Task {
 
+    private static final long serialVersionUID = 1L;
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;

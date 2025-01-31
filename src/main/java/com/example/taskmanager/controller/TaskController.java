@@ -1,15 +1,15 @@
 package com.example.taskmanager.controller;
 
 import com.example.taskmanager.model.Task;
+import com.example.taskmanager.service.TaskMessageProducer;
 import com.example.taskmanager.service.TaskService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/tasks")
@@ -18,9 +18,13 @@ public class TaskController {
 
     private final TaskService taskService;
 
-    public TaskController(TaskService taskService) {
+    private final TaskMessageProducer taskMessageProducer;
+
+    public TaskController(TaskService taskService, TaskMessageProducer taskMessageProducer) {
         this.taskService = taskService;
+        this.taskMessageProducer = taskMessageProducer;
     }
+
 
     @GetMapping
     public Page<Task> getAllTasks(Pageable pageable) {
@@ -34,11 +38,10 @@ public class TaskController {
     }
 
     @PostMapping
-    public ResponseEntity<Task> createTask(@Valid @RequestBody Task task) {
-        Task savedTask = taskService.createTask(task);
-        return ResponseEntity.status(201).body(savedTask);
+    public ResponseEntity<String> createTask(@Valid @RequestBody Task task) {
+        taskMessageProducer.sendTaskToQueue(task);
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body("Task is being processed.");
     }
-
 
     @PutMapping("/{id}")
     public ResponseEntity<Task> updateTask(@PathVariable Long id,@Valid @RequestBody Task task) {
@@ -53,5 +56,12 @@ public class TaskController {
     @PatchMapping("/{id}/complete")
     public ResponseEntity<Task> markTaskAsCompleted(@PathVariable Long id) {
         return ResponseEntity.ok(taskService.markTaskAsCompleted(id));
+    }
+
+
+    @PostMapping("/send")
+    public ResponseEntity<String> sendMessage(@RequestParam String message) {
+        taskMessageProducer.sendMessage("taskQueue", message);
+        return ResponseEntity.ok("Message sent to queue: " + message);
     }
 }
